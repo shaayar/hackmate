@@ -1,81 +1,206 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useAuth } from "@/providers/auth-provider"
-import { NavBar } from "@/components/nav-bar"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { useAuthContext } from "@/contexts/AuthContext"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
-import ProtectedRoute from "@/components/protected-route"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import TaskManager from "@/components/TaskManager"
+import TeamChat from "@/components/TeamChat"
+import VideoChat from "@/components/VideoChat"
+import OnlineTeamMembers from "@/components/OnlineTeamMembers"
+import { Calendar } from "@/components/ui/calendar"
+import { Plus } from "lucide-react"
+import type { Team, Task } from "@/types"
 
 export default function Dashboard() {
-  const { user } = useAuth()
-  const [projects, setProjects] = useState<string[]>([])
-  const [loadingProjects, setLoadingProjects] = useState(true)
+  const { user } = useAuthContext()
+  const router = useRouter()
+  const [teams, setTeams] = useState<Team[]>([])
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
+  const [activeTab, setActiveTab] = useState("tasks")
+  const [activeVideoCall, setActiveVideoCall] = useState<string | null>(null)
+  const [activeChatUser, setActiveChatUser] = useState<string | null>(null)
 
   useEffect(() => {
-    // Simulating project fetch
-    const fetchProjects = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      setProjects(["Project A", "Project B", "Project C"])
-      setLoadingProjects(false)
+    if (!user) {
+      router.push("/login")
+      return
     }
 
-    if (user) {
-      fetchProjects()
+    // Fetch user's teams and tasks
+    const fetchData = async () => {
+      try {
+        const teamsResponse = await fetch(`/api/users/${user.uid}/teams`)
+        const teamsData = await teamsResponse.json()
+        setTeams(teamsData)
+
+        const tasksResponse = await fetch(`/api/users/${user.uid}/tasks`)
+        const tasksData = await tasksResponse.json()
+        setTasks(tasksData)
+      } catch (error) {
+        console.error("Error fetching data:", error)
+      }
     }
-  }, [user])
+
+    fetchData()
+  }, [user, router])
+
+  const handleStartVideoCall = (userId: string) => {
+    setActiveVideoCall(userId)
+    setActiveTab("video")
+  }
+
+  const handleStartChat = (userId: string) => {
+    setActiveChatUser(userId)
+    setActiveTab("chat")
+  }
+
+  const handleEndCall = () => {
+    setActiveVideoCall(null)
+  }
+
+  if (!user) return null
 
   return (
-    <ProtectedRoute>
-      <div className="min-h-screen">
-        <NavBar />
-        <main className="container mx-auto mt-8 px-4">
-          <h1 className="mb-6 text-3xl font-bold">Welcome, {user?.email}</h1>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <Card>
-              <CardHeader>
-                <CardTitle>Your Projects</CardTitle>
-                <CardDescription>Manage your ongoing projects</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loadingProjects ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-full" />
-                  </div>
-                ) : (
-                  <ul className="list-inside list-disc space-y-1">
-                    {projects.map((project) => (
-                      <li key={project}>{project}</li>
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Find Teams</CardTitle>
-                <CardDescription>Discover new teams to join</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button className="w-full">Browse Teams</Button>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Create Project</CardTitle>
-                <CardDescription>Start a new project and recruit team members</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button className="w-full">New Project</Button>
-              </CardContent>
-            </Card>
-          </div>
-        </main>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold tracking-tight text-white">Welcome, {user?.displayName || "there"}</h1>
       </div>
-    </ProtectedRoute>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2 glass-effect">
+          <CardHeader>
+            <CardTitle className="text-xl text-primary-foreground">Your Teams</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {teams.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-primary-foreground/60 mb-4">No teams yet.</p>
+                <Button
+                  onClick={() => router.push("/teams/create")}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Team
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {teams.map((team) => (
+                  <Card
+                    key={team.id}
+                    className="bg-card/30 hover:bg-card/40 transition-colors cursor-pointer"
+                    onClick={() => router.push(`/teams/${team.id}`)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h3 className="font-semibold text-primary-foreground">{team.name}</h3>
+                          <p className="text-sm text-primary-foreground/60">{team.members.length} members</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          className="text-primary-foreground hover:text-primary hover:bg-primary/10"
+                        >
+                          View Team
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="glass-effect">
+          <CardHeader>
+            <CardTitle className="text-xl text-primary-foreground">Calendar</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={setSelectedDate}
+              className="rounded-md border border-primary/20"
+            />
+          </CardContent>
+        </Card>
+      </div>
+
+      <OnlineTeamMembers
+        teamId={teams[0]?.id || ""}
+        onStartVideoCall={handleStartVideoCall}
+        onStartChat={handleStartChat}
+      />
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="bg-card/50 border-primary/20">
+          <TabsTrigger
+            value="tasks"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Tasks
+          </TabsTrigger>
+          <TabsTrigger
+            value="chat"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Team Chat
+          </TabsTrigger>
+          <TabsTrigger
+            value="video"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Video Chat
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="tasks">
+          <Card className="glass-effect">
+            <CardHeader>
+              <CardTitle className="text-xl text-primary-foreground">Task Manager</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TaskManager initialTasks={tasks} teamId={teams[0]?.id || ""} userId={user.uid} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="chat">
+          <Card className="glass-effect">
+            <CardHeader>
+              <CardTitle className="text-xl text-primary-foreground">Team Chat</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {teams.length > 0 ? (
+                <TeamChat teamId={teams[0].id} teamName={teams[0].name} targetUserId={activeChatUser || undefined} />
+              ) : (
+                <div className="text-center py-8 text-primary-foreground/60">Join a team to start chatting</div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="video">
+          <Card className="glass-effect">
+            <CardHeader>
+              <CardTitle className="text-xl text-primary-foreground">Video Chat</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {teams.length > 0 ? (
+                <VideoChat teamId={teams[0].id} targetUserId={activeVideoCall || undefined} onEndCall={handleEndCall} />
+              ) : (
+                <div className="text-center py-8 text-primary-foreground/60">Join a team to start video chatting</div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
   )
 }
 

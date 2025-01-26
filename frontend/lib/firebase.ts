@@ -1,31 +1,19 @@
-import { initializeApp, getApps, getApp } from "firebase/app"
-import { getAuth, GoogleAuthProvider, GithubAuthProvider } from "firebase/auth"
+import { initializeApp, getApps } from "firebase/app"
+import { getAuth, GoogleAuthProvider } from "firebase/auth"
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
+  apiKey: "AIzaSyAhZgHaH_3UBmK8Wl4rlLhbVO7FJoO3IME",
+  authDomain: "hackmate-d6801.firebaseapp.com",
+  projectId: "hackmate-d6801",
+  storageBucket: "hackmate-d6801.firebasestorage.app",
+  messagingSenderId: "289822377530",
+  appId: "1:289822377530:web:e71304d1be83f9870f5703",
 }
 
 // Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp()
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
 const auth = getAuth(app)
-
-// Configure Google provider
 const googleProvider = new GoogleAuthProvider()
-googleProvider.setCustomParameters({
-  prompt: "select_account",
-})
 
-// Configure GitHub provider
-const githubProvider = new GithubAuthProvider()
-
-// Log initialization for debugging
-console.log("Firebase initialized with auth domain:", process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN)
-
-export { auth, googleProvider, githubProvider }
+export { auth, googleProvider }
 
